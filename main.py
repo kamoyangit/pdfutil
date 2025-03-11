@@ -24,19 +24,19 @@ def set_password_and_download(pdf_file, password):
         st.error(f"エラーが発生しました: {e}")
         return None
 
-def try_password(pdf_path, password):
-    """指定されたパスワードでPDFを開こうと試みる"""
+def try_password(pdf_stream, password):
+    """指定されたパスワードでPDFを開こうと試みる (io.BytesIOを使用)"""
     try:
-        with open(pdf_path, 'rb') as file:
-            reader = pypdf.PdfReader(file)
-            if reader.is_encrypted:
-                try:
-                    if reader.decrypt(password):
-                        return True
-                except:
+        pdf_stream.seek(0)  # ストリームの先頭に戻す
+        reader = pypdf.PdfReader(pdf_stream)
+        if reader.is_encrypted:
+            try:
+                if reader.decrypt(password):
+                    return True
+                else:
                     return False
-            else:
-                return True # パスワード不要なPDF
+            except:
+                return True  # パスワード不要なPDF
     except Exception as e:
         st.error(f"PDFファイルの読み込みエラー: {e}")
         return False
@@ -47,12 +47,10 @@ def generate_numeric_passwords(max_length):
         for combination in itertools.product('0123456789', repeat=length):
             yield ''.join(combination)
 
-
 def main():
     st.title("PDFユーティリティ:悪用厳禁")
     st.write("ただし、設定／解析できるパスワードは、数字の8桁以下です")
 
-    # カラムを作成して左右に配置
     col1, col2 = st.columns(2)
 
     with col1:
@@ -79,41 +77,35 @@ def main():
 
         if pdf_file_crack:
             try:
-                with open("temp.pdf", "wb") as f:  # 一時ファイルに保存
-                    f.write(pdf_file_crack.getbuffer())
+                # PDFファイルをio.BytesIOオブジェクトとして読み込む
+                pdf_stream = io.BytesIO(pdf_file_crack.read())
+                reader = pypdf.PdfReader(pdf_stream)
 
-                with open("temp.pdf", "rb") as file:
-                    reader = pypdf.PdfReader(file)
-                    if not reader.is_encrypted:
-                        st.info("パスワードは掛かっていません。")  # メッセージを表示
-                    else:
-                        st.write("解析を開始します...")
-                        password_found = False
-                        progress_bar = st.progress(0)
-                        passwords = list(generate_numeric_passwords(8))
-                        total_passwords = len(passwords)
-
-                        start_time = time.time()  # 開始時刻を記録
-
-                        for i, password in enumerate(passwords):
-                            if try_password("temp.pdf", password):
-                                st.success(f"パスワードが見つかりました: {password}")
-                                password_found = True
-                                break
-
-                            progress = (i + 1) / total_passwords
-                            progress_bar.progress(progress)
-
-                        end_time = time.time()  # 終了時刻を記録
-                        elapsed_time = end_time - start_time  # 経過時間を計算
-                        st.write(f"解析時間: {elapsed_time:.2f} 秒")  # 解析時間を表示
-
-                        if not password_found:
-                            st.warning("パスワードが見つかりませんでした。")
+                if not reader.is_encrypted:
+                    st.info("パスワードは掛かっていません。")
+                else:
+                    st.write("解析を開始します...")
+                    password_found = False
+                    progress_bar = st.progress(0)
+                    passwords = list(generate_numeric_passwords(8))
+                    total_passwords = len(passwords)
+                    start_time = time.time()
+                    for i, password in enumerate(passwords):
+                        # pdf_stream を try_password に渡す
+                        if try_password(pdf_stream, password):
+                            st.success(f"パスワードが見つかりました: {password}")
+                            password_found = True
+                            break
+                        progress = (i + 1) / total_passwords
+                        progress_bar.progress(progress)
+                    end_time = time.time()
+                    elapsed_time = end_time - start_time
+                    st.write(f"解析時間: {elapsed_time:.2f} 秒")
+                    if not password_found:
+                        st.warning("パスワードが見つかりませんでした。")
 
             except Exception as e:
                 st.error(f"エラーが発生しました: {e}")
-
 
 if __name__ == "__main__":
     main()
