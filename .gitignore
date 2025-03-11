@@ -1,0 +1,4 @@
+venv/
+PDF_EncDec.code-workspace
+dec.py
+enc.py
