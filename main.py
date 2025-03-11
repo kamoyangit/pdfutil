@@ -79,30 +79,33 @@ def main():
             try:
                 # PDFファイルをio.BytesIOオブジェクトとして読み込む
                 pdf_stream = io.BytesIO(pdf_file_crack.read())
-                reader = pypdf.PdfReader(pdf_stream)
+                try:
+                    reader = pypdf.PdfReader(pdf_stream)
 
-                if not reader.is_encrypted:
-                    st.info("パスワードは掛かっていません。")
-                else:
-                    st.write("解析を開始します...")
-                    password_found = False
-                    progress_bar = st.progress(0)
-                    passwords = list(generate_numeric_passwords(8))
-                    total_passwords = len(passwords)
-                    start_time = time.time()
-                    for i, password in enumerate(passwords):
-                        # pdf_stream を try_password に渡す
-                        if try_password(pdf_stream, password):
-                            st.success(f"パスワードが見つかりました: {password}")
-                            password_found = True
-                            break
-                        progress = (i + 1) / total_passwords
-                        progress_bar.progress(progress)
-                    end_time = time.time()
-                    elapsed_time = end_time - start_time
-                    st.write(f"解析時間: {elapsed_time:.2f} 秒")
-                    if not password_found:
-                        st.warning("パスワードが見つかりませんでした。")
+                    if not reader.is_encrypted:
+                        st.info("パスワードは掛かっていません。")
+                    else:
+                        st.write("解析を開始します...")
+                        password_found = False
+                        progress_bar = st.progress(0)
+                        passwords = list(generate_numeric_passwords(8))
+                        total_passwords = len(passwords)
+                        start_time = time.time()
+                        for i, password in enumerate(passwords):
+                            # pdf_stream を try_password に渡す
+                            if try_password(pdf_stream, password):
+                                st.success(f"パスワードが見つかりました: {password}")
+                                password_found = True
+                                break
+                            progress = (i + 1) / total_passwords
+                            progress_bar.progress(progress)
+                        end_time = time.time()
+                        elapsed_time = end_time - start_time
+                        st.write(f"解析時間: {elapsed_time:.2f} 秒")
+                        if not password_found:
+                            st.warning("パスワードが見つかりませんでした。")
+                except Exception as e:
+                    st.error(f"PDFファイルの読み込みエラーが発生しました: {e}")
 
             except Exception as e:
                 st.error(f"エラーが発生しました: {e}")
